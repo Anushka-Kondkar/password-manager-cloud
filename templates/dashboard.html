@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Dashboard</title>
+
+<style>
+
+body {
+    font-family: Arial;
+    background: #f4f6f8;
+}
+
+.header {
+    background: #2c3e50;
+    color: white;
+    padding: 15px;
+    text-align: center;
+}
+
+.container {
+    width: 900px;
+    margin: 20px auto;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+input {
+    padding: 8px;
+    margin: 5px;
+}
+
+button {
+    padding: 8px 16px;
+    background: #3498db;
+    color: white;
+    border: none;
+}
+
+#output {
+    background: #ecf0f1;
+    padding: 10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+Password Manager Dashboard
+
+<button onclick="logout()"
+style="float:right">
+
+Logout
+
+</button>
+
+</div>
+
+<div class="container">
+
+<h3>Add Password</h3>
+
+<input id="website" placeholder="Website">
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="addPassword()">
+Add Password
+</button>
+
+<hr>
+
+<button onclick="viewPasswords()">
+View Passwords
+</button>
+
+<div id="output"></div>
+
+</div>
+
+<script>
+
+let userId =
+localStorage.getItem("userId");
+
+function logout() {
+
+    localStorage.removeItem("userId");
+
+    window.location.href = "/";
+}
+
+async function addPassword() {
+
+    const response =
+    await fetch("/add_password", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+
+            user_id: userId,
+
+            website:
+            document.getElementById("website").value,
+
+            username:
+            document.getElementById("username").value,
+
+            password:
+            document.getElementById("password").value
+
+        })
+    });
+
+    const data =
+    await response.json();
+
+    document.getElementById("output")
+        .innerText = data.message;
+}
+
+async function viewPasswords() {
+
+    const response =
+    await fetch(
+        "/passwords/" + userId
+    );
+
+    const data =
+    await response.json();
+
+    document.getElementById("output")
+        .innerText =
+        JSON.stringify(data, null, 2);
+}
+
+</script>
+
+</body>
+
+</html>

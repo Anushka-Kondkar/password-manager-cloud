@@ -3,13 +3,14 @@
 
 <head>
 
-<title>Dashboard</title>
+<title>Password Manager Dashboard</title>
 
 <style>
 
 body {
     font-family: Arial;
     background: #f4f6f8;
+    margin: 0;
 }
 
 .header {
@@ -17,6 +18,7 @@ body {
     color: white;
     padding: 15px;
     text-align: center;
+    font-size: 22px;
 }
 
 .container {
@@ -28,23 +30,38 @@ body {
     background: white;
     padding: 15px;
     margin-bottom: 15px;
+    border-radius: 8px;
 }
 
 input {
     padding: 8px;
     margin: 5px;
+    width: 200px;
 }
 
 button {
     padding: 8px 16px;
+    margin: 5px;
     background: #3498db;
     color: white;
     border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2980b9;
+}
+
+.logout {
+    float: right;
+    background: red;
 }
 
 #output {
     background: #ecf0f1;
-    padding: 10px;
+    padding: 15px;
+    min-height: 80px;
+    white-space: pre-wrap;
 }
 
 </style>
@@ -57,8 +74,8 @@ button {
 
 Password Manager Dashboard
 
-<button onclick="logout()"
-style="float:right">
+<button class="logout"
+onclick="logout()">
 
 Logout
 
@@ -68,23 +85,110 @@ Logout
 
 <div class="container">
 
+<!-- ADD PASSWORD -->
+
+<div class="card">
+
 <h3>Add Password</h3>
 
-<input id="website" placeholder="Website">
-<input id="username" placeholder="Username">
-<input id="password" type="password" placeholder="Password">
+<input id="website"
+placeholder="Website">
+
+<input id="username"
+placeholder="Username">
+
+<input id="password"
+type="password"
+placeholder="Password">
+
+<br>
 
 <button onclick="addPassword()">
 Add Password
 </button>
 
-<hr>
+</div>
+
+<!-- VIEW PASSWORDS -->
+
+<div class="card">
+
+<h3>View Passwords</h3>
 
 <button onclick="viewPasswords()">
 View Passwords
 </button>
 
-<div id="output"></div>
+</div>
+
+<!-- UPDATE PASSWORD -->
+
+<div class="card">
+
+<h3>Update Password</h3>
+
+<input id="updateId"
+placeholder="Password ID">
+
+<input id="newPassword"
+type="password"
+placeholder="New Password">
+
+<br>
+
+<button onclick="updatePassword()">
+Update Password
+</button>
+
+</div>
+
+<!-- DELETE PASSWORD -->
+
+<div class="card">
+
+<h3>Delete Password</h3>
+
+<input id="deleteId"
+placeholder="Password ID">
+
+<br>
+
+<button onclick="deletePassword()">
+Delete Password
+</button>
+
+</div>
+
+<!-- SEARCH PASSWORD -->
+
+<div class="card">
+
+<h3>Search Password</h3>
+
+<input id="searchWebsite"
+placeholder="Website">
+
+<br>
+
+<button onclick="searchPassword()">
+Search Password
+</button>
+
+</div>
+
+<!-- OUTPUT -->
+
+<div class="card">
+
+<h3>Output</h3>
+
+<div id="output">
+
+System ready
+
+</div>
+
+</div>
 
 </div>
 
@@ -100,7 +204,18 @@ function logout() {
     window.location.href = "/";
 }
 
+function show(message) {
+
+    document.getElementById("output")
+        .innerText = message;
+}
+
 async function addPassword() {
+
+    if (!userId) {
+        show("Login first");
+        return;
+    }
 
     const response =
     await fetch("/add_password", {
@@ -108,7 +223,8 @@ async function addPassword() {
         method: "POST",
 
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type":
+            "application/json"
         },
 
         body: JSON.stringify({
@@ -125,16 +241,21 @@ async function addPassword() {
             document.getElementById("password").value
 
         })
+
     });
 
     const data =
-    await response.json();
+        await response.json();
 
-    document.getElementById("output")
-        .innerText = data.message;
+    show(data.message);
 }
 
 async function viewPasswords() {
+
+    if (!userId) {
+        show("Login first");
+        return;
+    }
 
     const response =
     await fetch(
@@ -142,11 +263,96 @@ async function viewPasswords() {
     );
 
     const data =
-    await response.json();
+        await response.json();
 
-    document.getElementById("output")
-        .innerText =
-        JSON.stringify(data, null, 2);
+    show(
+        JSON.stringify(
+            data,
+            null,
+            2
+        )
+    );
+}
+
+async function updatePassword() {
+
+    const id =
+    document.getElementById("updateId").value;
+
+    const newPassword =
+    document.getElementById("newPassword").value;
+
+    const response =
+    await fetch("/update_password", {
+
+        method: "PUT",
+
+        headers: {
+            "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+            password_id: id,
+            new_password: newPassword
+
+        })
+
+    });
+
+    const data =
+        await response.json();
+
+    show(data.message);
+}
+
+async function deletePassword() {
+
+    const id =
+    document.getElementById("deleteId").value;
+
+    const response =
+    await fetch(
+        "/delete_password/" + id,
+        {
+            method: "DELETE"
+        }
+    );
+
+    const data =
+        await response.json();
+
+    show(data.message);
+}
+
+async function searchPassword() {
+
+    if (!userId) {
+        show("Login first");
+        return;
+    }
+
+    const website =
+    document.getElementById(
+        "searchWebsite"
+    ).value;
+
+    const response =
+    await fetch(
+        "/search/" + userId + "/" + website
+    );
+
+    const data =
+        await response.json();
+
+    show(
+        JSON.stringify(
+            data,
+            null,
+            2
+        )
+    );
 }
 
 </script>

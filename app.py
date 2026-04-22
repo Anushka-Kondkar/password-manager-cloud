@@ -6,7 +6,6 @@ from flask_bcrypt import Bcrypt
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 
-# Database file
 db_path = "password_manager.db"
 
 # Load encryption key
@@ -15,14 +14,22 @@ with open("secret.key", "rb") as f:
 
 cipher = Fernet(key)
 
-
 # =========================
-# HOME PAGE (UI)
+# HOME → LOGIN PAGE
 # =========================
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("login.html")
+
+
+# =========================
+# DASHBOARD PAGE
+# =========================
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
 
 
 # =========================
@@ -132,6 +139,49 @@ def login():
 
 
 # =========================
+# ADD PASSWORD
+# =========================
+
+@app.route("/add_password", methods=["POST"])
+def add_password():
+
+    data = request.json
+
+    user_id = data["user_id"]
+    website = data["website"]
+    username = data["username"]
+    password = data["password"]
+
+    encrypted_password = cipher.encrypt(
+        password.encode()
+    )
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO passwords
+    (user_id, website,
+     account_username,
+     encrypted_password)
+    VALUES (?, ?, ?, ?)
+    """, (
+        user_id,
+        website,
+        username,
+        encrypted_password
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message":
+        "Password added successfully"
+    })
+
+
+# =========================
 # VIEW PASSWORDS
 # =========================
 
@@ -142,7 +192,8 @@ def view_passwords(user_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT website,
+    SELECT id,
+           website,
            account_username,
            encrypted_password
     FROM passwords
@@ -157,26 +208,136 @@ def view_passwords(user_id):
 
     for row in rows:
 
-        decrypted_password = cipher.decrypt(
-            row[2]
+        decrypted = cipher.decrypt(
+            row[3]
         ).decode()
 
         data.append({
-            "website":
-            row[0],
 
-            "username":
-            row[1],
+            "id": row[0],
+            "website": row[1],
+            "username": row[2],
+            "password": decrypted
 
-            "password":
-            decrypted_password
         })
 
     return jsonify(data)
 
 
 # =========================
-# HEALTH CHECK
+# UPDATE PASSWORD
+# =========================
+
+@app.route("/update_password", methods=["PUT"])
+def update_password():
+
+    data = request.json
+
+    password_id = data["password_id"]
+    new_password = data["new_password"]
+
+    encrypted_password = cipher.encrypt(
+        new_password.encode()
+    )
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    UPDATE passwords
+    SET encrypted_password = ?
+    WHERE id = ?
+    """, (
+        encrypted_password,
+        password_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message":
+        "Password updated successfully"
+    })
+
+
+# =========================
+# DELETE PASSWORD
+# =========================
+
+@app.route(
+    "/delete_password/<int:password_id>",
+    methods=["DELETE"]
+)
+def delete_password(password_id):
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    DELETE FROM passwords
+    WHERE id = ?
+    """, (password_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message":
+        "Password deleted successfully"
+    })
+
+
+# =========================
+# SEARCH PASSWORD
+# =========================
+
+@app.route(
+    "/search/<int:user_id>/<website>"
+)
+def search_password(user_id, website):
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT website,
+           account_username,
+           encrypted_password
+    FROM passwords
+    WHERE user_id = ?
+    AND LOWER(website) =
+        LOWER(?)
+    """, (
+        user_id,
+        website
+    ))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    data = []
+
+    for row in rows:
+
+        decrypted = cipher.decrypt(
+            row[2]
+        ).decode()
+
+        data.append({
+
+            "website": row[0],
+            "username": row[1],
+            "password": decrypted
+
+        })
+
+    return jsonify(data)
+
+
+# =========================
+# HEALTH CHECK (Render)
 # =========================
 
 @app.route("/healthz")
